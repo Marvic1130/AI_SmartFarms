@@ -18,19 +18,26 @@ server_url = 'https://smartfarmhansei.shop/sensor/data'  # 웹 서버의 URL
 
 generation_mode = 0
 
-led_pin_1 = 13
-#led_pin_2 = 
+led_pin_1 = 6
+led_pin_2 = 13
 water_pump_pin_1 = 19
-#water_pump_pin_2 = 
+water_pump_pin_2 = 26
+water_pump_pin_M = 5
 
 # GPIO 초기화
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(led_pin_1, GPIO.OUT)
+GPIO.setup(led_pin_2, GPIO.OUT)
+GPIO.setup(water_pump_pin_M, GPIO.OUT)
 GPIO.setup(water_pump_pin_1, GPIO.OUT)
+GPIO.setup(water_pump_pin_2, GPIO.OUT)
 
-GPIO.output(led_pin_1, GPIO.LOW)
-GPIO.output(water_pump_pin_1, GPIO.LOW)
+GPIO.output(led_pin_1, GPIO.HIGH)
+GPIO.output(led_pin_2, GPIO.HIGH)
+GPIO.output(water_pump_pin_1, GPIO.HIGH)
+GPIO.output(water_pump_pin_2, GPIO.HIGH)
+GPIO.output(water_pump_pin_M, GPIO.LOW)
 
 # status & value
 # 현재 센서값은 임의의 값 출력을 위해서 값을 일단 넣은 상태
@@ -46,16 +53,8 @@ Soil_Val = 0
 fan_status = False
 window_status = False
 
-
-led_status_1 = False
-led_status_2 = False
-led_status_3 = False
-led_status_4 = False
-
-pump_status_1 = False
-pump_status_2 = False
-pump_status_3 = False
-pump_status_4 = False
+led_status = [False,False,False,False]
+pump_status = [False,False,False,False]
 
 class SensorModule:
     def __init__(self, Id, light_val, temp_val, humi_val, Co2_val, Soil_val):
@@ -85,35 +84,46 @@ while True:
     if generation_mode == 1:
         print("Manual Mode 0N")
         while True:
-            control = input("input number 0 ~ 2 : ")   # 0 recv data, 1 led, 2 pump
-            if control == 0 :
-                data = client_socket.recv(1024)  # 클라이언트로부터 데이터를 받는다.
-                if not data:
-                    print("None Data")
-                    break
-                
-                data_str = data.decode()
-                sensor_id,temp_val, humi_val, light_val, Co2_Val, Soil_Val = map(float, data_str.split(','))
-                
-                # 센서 데이터 객체 생성
-                sensor_data = SensorModule(sensor_id, light_val, temp_val, humi_val, Co2_Val, Soil_Val)
-                filename = 'sensor_data.json'
-                with open(filename, 'w') as json_file:
-                    json.dump([sensor_data.__dict__], json_file)
-                # 웹 서버로 데이터 전송
-                #send_to_server(server_url, sensor_data.__dict__)
-                
-            elif control == 1 :
-                #select_num = input("which 1~4 LED : ")
-                #if select_num == 1 :
-                led_status = not led_status
-                GPIO.output(led_pin_1, GPIO.HIGH if led_status else GPIO.LOW)
-
-            elif control == 2 :
-                #select_num = input("which 1~4 Pump : ")
-                #if select_num == 1 :
-                pump_status = not pump_status
-                GPIO.output(water_pump_pin_1, GPIO.HIGH if pump_status else GPIO.LOW)
+            control = int(input("Select LED or Pump : "))
+            try:
+                if control >= 3:
+                    continue
+                while True:
+                    led_status,pump_status
+                    if control == 1 :
+                        select_num = int(input("which 1~2 LED : "))   # 3 is break
+                        if select_num == 1 :
+                            led_status[0] = not led_status[0]
+                            GPIO.output(led_pin_1, GPIO.LOW if led_status[0] else GPIO.HIGH)
+                        elif select_num == 2 :
+                            led_status[1] = not led_status[1]
+                            GPIO.output(led_pin_2,GPIO.LOW if led_status[1] else GPIO.HIGH)
+                        elif select_num == 3 :
+                            break
+                        print(led_status)
+                    elif control == 2:
+                        select_num = int(input("witch 1~2 Pump : "))
+                        if select_num == 1:
+                            pump_status[0] = not pump_status[0]
+                            GPIO.output(water_pump_pin_1,GPIO.LOW if pump_status[0] else GPIO.HIGH)
+                        elif select_num == 2:
+                            pump_status[1] = not pump_status[1]
+                            GPIO.output(water_pump_pin_2,GPIO.LOW if pump_status[1] else GPIO.HIGH)
+                        elif select_num == 3:
+                            break
+                        
+                        if pump_status[0] and pump_status[1]:
+                            GPIO.output(water_pump_pin_M,GPIO.HIGH)
+                        elif pump_status[0] or pump_status[1]:
+                            GPIO.output(water_pump_pin_M,GPIO.HIGH)
+                        else:
+                            GPIO.output(water_pump_pin_M,GPIO.LOW)
+                            
+                        print(pump_status)
+            
+            except ValueError:
+                print("input only 1~2")
+                continue        
     else :
         print("Auto Mode 0N")
         while True:
@@ -185,6 +195,5 @@ server_socket.close()
 
 """
 자동제어 부분 만들어야함
-물펌프랑 조도
 
 """
